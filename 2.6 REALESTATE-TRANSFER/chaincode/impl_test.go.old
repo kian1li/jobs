@@ -1,0 +1,61 @@
+package chaincode_test
+
+import (
+	"realestatetransfer/chaincode"
+	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/stretchr/testify/assert"
+	"testing"
+)
+
+const (
+	aliceJSON = `{"Id":"1", "Name":"Alice", "Token":"100"}`
+
+	participantJSON= "["+ aliceJSON +"]"
+)
+
+func TestInit(t *testing.T) {
+	stub := shim.NewMockStub("realestatetransfer", new(chaincode.RealestateTransferCC))
+	if assert.NotNil(t, stub) {
+		res := stub.MockInit(util.GenerateUUID(), nil)
+		assert.True(t, res.Status < shim.ERRORTHRESHOLD)
+	}
+}
+
+func TestInvoke(t *testing.T) {
+	// instantiation check
+	stub := shim.NewMockStub("realestatetransfer", new(chaincode.RealestateTransferCC))
+	if !assert.NotNil(t, stub) {
+		return
+	}
+
+	// Init check
+	if !assert.True(t, stub.MockInit(util.GenerateUUID(), nil).Status <shim.ERRORTHRESHOLD) {
+		return
+	}
+
+	// Invoke check
+	if !assert.True(
+		t,
+		stub.MockInvoke(
+			util.GenerateUUID(),
+			getBytes("AddParticipant", aliceJSON),
+		).Status < shim.ERRORTHRESHOLD,
+	) {
+		return
+	}
+
+	res := stub.MockInvoke(util.GenerateUUID(), getBytes("ListParticipants"))
+	_ = assert.True(t, res.Status < shim.ERRORTHRESHOLD) &&
+	assert.JSONEq(t, participantJSON, string(res.Payload))
+}
+
+// Convert function name & arguments into a byte format that MockStub accept
+func getBytes(function string, args ...string) [][]byte {
+	bytes := make([][]byte, 0, len(args)+1)
+	bytes = append(bytes, []byte(function))
+	for _, s := range args {
+		bytes = append(bytes, []byte(s))
+	}
+	return bytes
+}
